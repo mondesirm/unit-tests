@@ -1,0 +1,10 @@
+{
+  "name": "unit-tests",
+  "version": "1.0.0",
+  "main": "index.php",
+  "author": "MONDESIR Malik <malikmondesir@gmail.com>",
+  "license": "MIT",
+	"scripts": {
+		"test": "vendor/bin/phpunit --colors=always"
+	}
+}

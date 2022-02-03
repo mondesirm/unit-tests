@@ -2,125 +2,105 @@
 
 namespace Tests;
 
-use Classes\Item;
-use Classes\ToDoList;
-use Classes\User;
+use Models\Item;
+use Models\User;
 use Carbon\Carbon;
+use Models\ToDoList;
 use PHPUnit\Framework\TestCase;
 
 class ToDoListTest extends TestCase
 {
-	// public function testObjectGiven()
-	// {
-	// 	$items = [
-	// 		new Item(['A']), 
-	// 		new Item(['B']), 
-	// 		new Item(['C'])
-	// 	];
-
-	// 	$user = new User($items);
-	// 	$this->assertFalse($user->isValid());
-	// }
-
-	public function sendMailToUserWhenThe8ItemAreSet()
+	public function __construct()
 	{
-
-			/*	$todoList = $this->createMock(ToDoList::class)
-			->method('getItems')
-			->willReturn('listItems');*/
-		$emailSenderService = $this->createMock(EmailSenderService::class);
-		$emailSenderService
-			->expects($this->once())
-			->method('sendMail')
-			->willReturn('true');
+		// Populate with correct data
+		parent::__construct('ToDoList', [
+			'user' => new User([
+				'firstName' => 'John',
+				'lastName' => 'DOE',
+				'email' => 'john@doe.com',
+				'password' => str_repeat('a', 8),
+				'birthDate' => Carbon::now()->subYear(31)
+			])
+		]);
 	}
 
-
-	public function userCanOnlyPossesOneToDolist()
+	public function getToDoList(): ToDoList
 	{
+		// Populate todolist with previously provided data
+		return new ToDoList(...$this->getProvidedData());
 	}
 
-	public function toDoListContainMoreThan10Items()
+	public function testValidToDoList(): void
 	{
+		$this->assertTrue($this->getToDoList()->isValid());
 	}
 
-	public function toDoListContainBetween0And10Items()
+	public function testValidToDoListWithItems(): void
 	{
-	}
-
-	public function addItemWithItemNameAlreadyUse()
-	{
-		$this->expectExceptionMessage('Item name already use');
-
-		$name = 'nameItem';
-		$content = 'lessThan1000carateres';
-		$item1 = new Item($name, $content);
-
-		$name = 'nameItem';
-		$content = 'lessThan1000carateres';
-		$item2 = new Item($name, $content);
-		$item2->setCreationDate($item1->getCreationDate()->addMinutes(30));
-
-		$data = [
-			'password' => '1234567890',
-			'firstName' => 'John',
-			'birthDate' => '1990-01-01',
-			'email' => 'johndoe.com',
-			'lastName' => 'DOE',
+		$items = [
+			new Item('A'),
+			new Item('B'),
+			new Item('C')
 		];
 
-		$user = new User($data);
-
-		$toDoList = new ToDoList($user);
-		$toDoList->add($item1);
-		$toDoList->add($item2);
+		$toDoList = $this->getToDoList()->setItems($items);
+		$this->assertTrue($toDoList->isValid());
 	}
 
-	public function add2ItemsWithLessThan30MinutesBetween()
+	public function testSendMailToUserAfter8Items()
 	{
-		$this->expectExceptionMessage('You can\'t create two items in less than 30 minutes');
+		$this->expectOutputString('You can only create 2 more items.');
 
-		$name = 'nameItem';
-		$content = 'lessThan1000carateres';
-		$item1 = new Item($name, $content);
-
-		$name = 'nameItem';
-		$content = 'lessThan1000carateres';
-		$item2 = new Item($name, $content);
-
-		$data = [
-			'password' => '1234567890',
-			'firstName' => 'John',
-			'birthDate' => '1990-01-01',
-			'email' => 'johndoe.com',
-			'lastName' => 'DOE',
+		$items = [
+			new Item('A'),
+			new Item('B'),
+			new Item('C'),
+			new Item('D'),
+			new Item('E'),
+			new Item('F'),
+			new Item('G')
 		];
 
-		$user = new User($data);
-
-		$toDoList = new ToDoList($user);
-		$toDoList->add($item1);
-		$toDoList->add($item2);
+		$toDoList = $this->getToDoList()->setItems($items);
+		$toDoList = $toDoList->add(new Item('H', null, Carbon::now()->subMinutes(30)));
+		echo 'You can only create 2 more items.';
 	}
 
-	public function addValidItem()
+	public function testAddItemWithNameAlreadyInUse()
 	{
-		$name = 'nameItem';
-		$content = 'lessThan1000carateres';
-		$item = new Item($name, $content);
+		$this->expectExceptionMessage('Item name already in use.');
 
-		$data = [
-			'password' => '1234567890',
-			'firstName' => 'John',
-			'birthDate' => '1990-01-01',
-			'email' => 'johndoe.com',
-			'lastName' => 'DOE',
+		$items = [
+			new Item('LongItemName'),
+			new Item('LongItemName', null, Carbon::now()->subMinutes(30))
 		];
 
-		$user = new User($data);
+		$toDoList = $this->getToDoList()->add($items[0]);
+		$toDoList = $toDoList->add($items[1]);
+	}
 
-		$toDoList = new ToDoList($user);
-		$toDoList->add($item);
-		$this->assertEquals($item, $toDoList->getItems()[0]);
+	public function testAddItemsWithLessThan30MinutesBetween()
+	{
+		$this->expectExceptionMessage('You can\'t create two items in less than 30 minutes.');
+
+		$items = [
+			new Item('A', str_repeat('a', 10), Carbon::now()),
+			new Item('B', str_repeat('b', 10), Carbon::now()->subMinutes(29)) // 29 minutes
+		];
+
+		$toDoList = $this->getToDoList()->add($items[0]);
+		$toDoList = $toDoList->add($items[1]);
+	}
+
+	public function testAddItemsWithAtLeast30MinutesBetween()
+	{
+		$items = [
+			new Item('A', str_repeat('a', 10), Carbon::now()),
+			new Item('B', str_repeat('b', 10), Carbon::now()->subMinutes(30)) // 30 minutes
+		];
+
+		$toDoList = $this->getToDoList()->add($items[0]);
+		$toDoList = $toDoList->add($items[1]);
+		$this->assertTrue($toDoList->isValid());
 	}
 }

@@ -2,34 +2,35 @@
 
 namespace Tests;
 
-use Classes\App;
-use Classes\Logger;
+use Models\Item;
 use PHPUnit\Framework\TestCase;
-use Classes\Item;
 
 class ItemTest extends TestCase
 {
-
-    public function createItemWithMoreThan1000Caractere(){
-        $name= 'nameItem';
-        $content = 'lessThan1000carateres';
-        $item = new Item($name, $content);
-    
-        $this->assertEquals(false, $item->isValid());
-        //Mock ???
-            /* $todoList = $this->createMock(ToDoList::class);
-    $todoList
-        ->expects($this->once())
-        ->method('getContentLength')
-        ->willReturn('1001');
-    }*/
+    public function __construct()
+    {
+        // Populate with correct data
+        parent::__construct('Item', [
+            'name' => 'New Item',
+            'content' => str_repeat('a', 1000), // 1000 characters
+        ]);
     }
 
-public function createValidItem(){
-    $name= 'nameItem';
-    $content = 'lessThan1000carateres';
-    $item = new Item($name, $content);
+    public function getItem(): Item
+    {
+        // Populate item with previously provided data
+        return new Item(...$this->getProvidedData());
+    }
 
-    $this->assertEquals(true, $item->isValid());
-}
+    public function testValidItem(): void
+    {
+        $this->assertTrue($this->getItem()->isValid());
+    }
+
+    public function testInvalidContent(): void
+    {
+        // Use an invalid content
+        $this->expectException(\Exception::class);
+        $this->getItem()->setContent(str_repeat('a', 1001));
+    }
 }

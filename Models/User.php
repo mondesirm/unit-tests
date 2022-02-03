@@ -1,35 +1,50 @@
 <?php
 
-namespace Classes;
+namespace Models;
 
 use Carbon\Carbon;
+use PharIo\Manifest\Email;
 
 class User
 {
-	private string $firstName = '';
-	private string $lastName = '';
-	private string $email = '';
-	private string $password = '';
+	private ?string $firstName = null;
+	private ?string $lastName = null;
+	private ?string $email = null;
+	public ?string $plainTextPassword = null;
+	private ?string $password = null;
 	private ?Carbon $birthDate = null;
 	private ?ToDoList $toDoList = null;
 
 	public function __construct($args)
 	{
-		if (count($args) == 5) {
+		if (count($args) >= 5) {
 			$i = 0;
 
+			// Iterate over User properties
 			foreach ($this as $key => $value) {
+				// Skip if the key is among these values (they'll be set later differently)
+				if (in_array($key, ['plainTextPassword', 'toDoList'])) {
+					continue;
+				}
+
+				// Dynamic setter
 				$setter = 'set' . ucfirst($key);
 
 				if (array_key_exists($key, $args)) {
+					// Set the value if an object was passed
 					$this->$setter($args[$key]);
 				} else {
+					// Set the value if an array was passed
 					$this->$setter($args[$i]);
 				}
 
+				// Increment the counter (used if it's an array)
 				$i++;
 			}
 		}
+
+		// If no ToDoList was passed, create a new one by default
+		$this->setToDoList(isset($args[5]) ? $args[5] : new ToDoList($this)); 
 	}
 
 	/**
@@ -37,7 +52,10 @@ class User
 	 */
 	public function __toString(): string
 	{
-		return $this->getFullName() . ' (' . $this->getEmail() . ' | ' . $this->getBirthDate()->age . ' yo): ' . $this->getToDoList() == null ? 'Without ToDoList' : 'With ToDoList';
+		return $this->isValid()
+			? $this->getFullName() . ' (' . $this->getEmail() . ' | ' . $this->getBirthDate()->age . ' yo): ' . ($this->getToDoList() == null ? 'Without ToDoList' : 'With ToDoList')
+			: 'Invalid user'
+		;
 	}
 
 	/**
@@ -45,13 +63,13 @@ class User
 	 */
 	public function getFullName(): string
 	{
-		return $this->firstName . ' ' . $this->lastName;
+		return $this->getFirstName() . ' ' . $this->getLastName();
 	}
 
 	/**
 	 * Check if the user is valid
 	 */
-	public function isValid(): bool
+	public function isValid(bool $return = false): bool
 	{
 		$errors = [];
 
@@ -75,12 +93,14 @@ class User
 			}
 
 			// If password length is less than 8 caractere or more than 40 caractere
-			if ($key == 'password' && strlen($this->getPassword()) > 8 && strlen($this->getPassword()) < 40) {
-				$errors[] = "The password needs to be between 8 and 40 caractere";
+			if ($key == 'password' && (strlen($this->plainTextPassword) < 8 || strlen($this->plainTextPassword) > 40)) {
+				$errors[] = "The password needs to be between 8 and 40 characters.";
 			}
 		}
 
-		// !empty($errors) ? print_r($errors) : false;
+		if ($return && !empty($errors)) {
+			print_r($errors);
+		}
 
 		return empty($errors);
 	}
@@ -118,7 +138,7 @@ class User
 	/**
 	 * Get the value of firstName
 	 */
-	public function getFirstName(): string
+	public function getFirstName(): ?string
 	{
 		return $this->firstName;
 	}
@@ -128,7 +148,7 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setFirstName($firstName): User
+	public function setFirstName(string $firstName): User
 	{
 		$this->firstName = $firstName;
 
@@ -138,7 +158,7 @@ class User
 	/**
 	 * Get the value of lastName
 	 */
-	public function getLastName(): string
+	public function getLastName(): ?string
 	{
 		return $this->lastName;
 	}
@@ -148,7 +168,7 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setLastName($lastName): User
+	public function setLastName(string $lastName): User
 	{
 		$this->lastName = $lastName;
 
@@ -158,7 +178,7 @@ class User
 	/**
 	 * Get the value of email
 	 */
-	public function getEmail(): string
+	public function getEmail(): ?string
 	{
 		return $this->email;
 	}
@@ -168,7 +188,7 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setEmail($email): User
+	public function setEmail(mixed $email): User
 	{
 		$this->email = $email;
 
@@ -178,7 +198,7 @@ class User
 	/**
 	 * Get the value of password
 	 */
-	public function getPassword(): string
+	public function getPassword(): ?string
 	{
 		return $this->password;
 	}
@@ -188,9 +208,10 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setPassword($password): User
+	public function setPassword(string $password): User
 	{
-		$this->password = $password;
+		$this->plainTextPassword = $password;
+		$this->password = password_hash($password, PASSWORD_BCRYPT);
 
 		return $this;
 	}
@@ -198,7 +219,7 @@ class User
 	/**
 	 * Get the value of birthDate
 	 */
-	public function getBirthDate(): Carbon
+	public function getBirthDate(): ?Carbon
 	{
 		return $this->birthDate;
 	}
@@ -208,7 +229,7 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setBirthDate($birthDate): User
+	public function setBirthDate(mixed $birthDate): User
 	{
 		$this->birthDate = ($birthDate instanceof Carbon) ? $birthDate : Carbon::createFromDate(...explode('-', $birthDate));
 
@@ -218,8 +239,10 @@ class User
 	/**
 	 * Get the value of toDoList
 	 */
-	public function getToDoList(): ToDoList
+	public function getToDoList(): ?ToDoList
 	{
+		// TODO Check if the toDoList has items
+		// return $this->toDoList ? $this->toDoList : 'No ToDoList';
 		return $this->toDoList;
 	}
 
@@ -228,9 +251,8 @@ class User
 	 *
 	 * @return self
 	 */
-	public function setToDoList($toDoList = null): User
+	public function setToDoList(?ToDoList $toDoList = null): User
 	{
-
 		$this->toDoList = $toDoList ? $toDoList : new ToDoList($this);
 
 		return $this;

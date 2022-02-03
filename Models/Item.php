@@ -1,24 +1,23 @@
 <?php
 
-namespace Classes;
+namespace Models;
 
-use Exception;
 use Carbon\Carbon;
 
 class Item
 {
-	private string $name = 'New Item';
-	private string $content = '';
-	private $creationDate = null;
+	public ?string $name = 'New Item';
+	private ?string $content = null;
+	private ?Carbon $creationDate = null;
 
 	/**
 	 * Constructor
 	 */ 
-	public function __construct(string $name = '', $content = '')
+	public function __construct(string $name = '', $content = null, mixed $creationDate = null)
 	{
-		$this->setName($name);
+		$this->setName($name ?: $this->getName());
 		$this->setContent($content);
-		$this->setCreationDate(Carbon::now());
+		$this->setCreationDate($creationDate ?: Carbon::now());
 	}
 
 	/**
@@ -26,7 +25,7 @@ class Item
 	 */ 
 	public function __toString(): string
 	{
-		return "Item {$this->getName()} ({$this->getCreationDate()}): {$this->getContent()}";
+		return "Item {$this->getName()} ({$this->getCreationDate()->diffForHumans()}): {$this->getContent()}";
 	}
 
 	/**
@@ -40,7 +39,7 @@ class Item
 	/**
 	 * Get the value of name
 	 */ 
-	public function getName(): string
+	public function getName(): ?string
 	{
 		return $this->name;
 	}
@@ -60,7 +59,7 @@ class Item
 	/**
 	 * Get the value of content
 	 */ 
-	public function getContent(): string
+	public function getContent(): ?string
 	{
 		return $this->content;
 	}
@@ -75,7 +74,7 @@ class Item
 		if (strlen($content) <= 1000) {
 			$this->content = $content;
 		} else {
-			throw new Exception('You can\'t create an item with more than 1000 characters in its content.');
+			throw new \Exception('You can\'t create an item with more than 1000 characters in its content.');
 		}
 
 		return $this;
@@ -84,7 +83,7 @@ class Item
 	/**
 	 * Get the value of creationDate
 	 */
-	public function getCreationDate(): Carbon
+	public function getCreationDate(): ?Carbon
 	{
 		return $this->creationDate;
 	}
@@ -94,9 +93,9 @@ class Item
 	 *
 	 * @return self
 	 */
-	public function setCreationDate(Carbon $creationDate): Item
+	public function setCreationDate(mixed $creationDate): Item
 	{
-		$this->creationDate = $creationDate;
+		$this->creationDate = ($creationDate instanceof Carbon) ? $creationDate : Carbon::createFromDate(...explode('-', $creationDate));
 
 		return $this;
 	}
